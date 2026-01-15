@@ -3,6 +3,7 @@ import re
 import argparse
 import os
 import matplotlib.pyplot as plt
+import string
 
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 from nltk.corpus import stopwords
@@ -10,10 +11,46 @@ from collections import Counter
 
 
 
-def read_text(file_path: str) -> str:
+def read_file(file_path: str) -> str:
     with open(f"{file_path}", "r", encoding="utf-8", errors="replace") as f:
         text = f.read()
     return text
+
+def write_file(filename: str, header: str, lines: list[str]):
+    os.makedirs("output", exist_ok=True)
+    with open(f"output/{filename}", "w", encoding="utf-8") as f:
+        f.write(header + "\n")
+        for line in lines:
+            f.write(line + "\n")
+
+def write_token_counts(counts: list[tuple[str, int]], total: int, suffix: str):
+    lines = [f"{token}\t{freq}" for token, freq in counts]
+
+    write_file(
+        filename=f"tokens_{suffix}.log",
+        header=f"The total # of tokens: {total}",
+        lines=lines
+    )
+
+    print(f"Saved token counts to output/tokens_{suffix}.log")
+def analyze_tokens(counts: list[tuple[str, int]], suffix: str):
+    freqs = [freq for _, freq in counts]
+    ranks = range(1, len(freqs) + 1)
+
+    out_path = f"output/zipf_{suffix}.png"
+
+    plt.figure(figsize=(8, 6))
+    plt.loglog(ranks, freqs)
+    plt.xlabel("Rank")
+    plt.ylabel("Frequency")
+    plt.title(f"Zipf Plot ({suffix})")
+    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=300)
+    plt.close()
+
+    print(f"Saved plot to {out_path}")
+
 
 def tokenize(text: str) -> list[str]:
     tokens: list[str] = re.split(r"\s+", text)
@@ -23,6 +60,96 @@ def tokenize(text: str) -> list[str]:
 def count_tokens(tokens: list[str]) -> list[tuple[str, int]]:
     counts = Counter(tokens)
     return counts.most_common()
+
+
+def apply_lowercase(tokens: list[str]) -> list[str]:
+    before = tokens
+    after = [t.lower() for t in tokens]
+
+    changed = [
+        f"{b} -> {a}"
+        for b, a in zip(before, after)
+        if b != a
+    ]
+
+    write_file(
+        "lowercase.log",
+        "Tokens changed by lowercase normalization:",
+        changed
+    )
+
+    return after
+
+def remove_punctuation_only(tokens: list[str]) -> list[str]:
+    before = tokens
+    after = [
+        t for t in tokens
+        if not all(c in string.punctuation for c in t)
+    ]
+
+    removed = sorted(set(before) - set(after))
+
+    write_file(
+        "punctuation_removed.log",
+        "Punctuation-only tokens removed:",
+        removed
+    )
+
+    return after
+
+def remove_stopwords(tokens: list[str]) -> list[str]:
+    stop_words = set(stopwords.words("english"))
+    before = tokens
+    after = [t for t in tokens if t not in stop_words]
+
+    removed = sorted(set(before) - set(after))
+
+    write_file(
+        "stopwords_removed.log",
+        "Stopwords removed:",
+        removed
+    )
+
+    return after
+
+def apply_stemming(tokens: list[str]) -> list[str]:
+    stemmer = PorterStemmer()
+    before = tokens
+    after = [stemmer.stem(t) for t in tokens]
+
+    changes = sorted(set(
+        f"{b} -> {a}"
+        for b, a in zip(before, after)
+        if b != a
+    ))
+
+    write_file(
+        "stem.log",
+        "Tokens changed by stemming:",
+        changes
+    )
+
+    return after
+
+def apply_lemmatization(tokens: list[str]) -> list[str]:
+    lemmatizer = WordNetLemmatizer()
+    before = tokens
+    after = [lemmatizer.lemmatize(t) for t in tokens]
+
+    changes = sorted(set(
+        f"{b} -> {a}"
+        for b, a in zip(before, after)
+        if b != a
+    ))
+
+    write_file(
+        "lemmatize.log",
+        "Tokens changed by lemmatization:",
+        changes
+    )
+
+    return after
+
 
 
 def parse_args():
@@ -72,7 +199,7 @@ def parse_args():
     parser.add_argument(
         "-myopt",
         action="store_true",
-        help="Remove tokens containing digits (e.g., timestamps, PIDs, numeric identifiers)"
+        help="Remove punctuation-only tokens"
     )
 
     args = parser.parse_args()
@@ -82,87 +209,46 @@ def parse_args():
 
     return args
 
-def build_suffix(args) -> str:
-    parts = []
-    if args.lowercase:
-        parts.append("lowercase")
-    if args.myopt:
-        parts.append("myopt")
-    if args.stopwords:
-        parts.append("stopwords")
-    if args.stem:
-        parts.append("stem")
-    if args.lemmatize:
-        parts.append("lemmatize")
-    return "_".join(parts) if parts else "raw"
-
-
 def main():
     args = parse_args()
-    
-    path: str = args.input_file
-    text: str = read_text(path)
-    tokens: list[str] = tokenize(text)
+    path = args.input_file
 
-    os.makedirs("output", exist_ok=True)
+    text = read_file(path)
+    filename = os.path.splitext(os.path.basename(path))[0]
+    suffix = [filename]
 
+    tokens = tokenize(text)
 
-    # Lowercasing
     if args.lowercase:
-        tokens = [t.lower() for t in tokens]
+        suffix.append("lowercase")
+        tokens = apply_lowercase(tokens)
 
-    # my option to remove numbers
     if args.myopt:
-        tokens = [t for t in tokens if not any(c.isdigit() for c in t)]
+        suffix.append("myopt")
+        tokens = remove_punctuation_only(tokens)
 
-    # Stopword removal
     if args.stopwords:
-        stop_words = set(stopwords.words("english"))
-        tokens = [t for t in tokens if t not in stop_words]
+        suffix.append("stopwords")
+        tokens = remove_stopwords(tokens)
 
-    # Stemming OR lemmatization
-    
     if args.stem:
-        stemmer = PorterStemmer()
-        tokens = [stemmer.stem(t) for t in tokens]
-
+        suffix.append("stem")
+        tokens = apply_stemming(tokens)
     elif args.lemmatize:
-        lemmatizer = WordNetLemmatizer()
-        tokens = [lemmatizer.lemmatize(t) for t in tokens]
+        suffix.append("lemmatize")
+        tokens = apply_lemmatization(tokens)
 
-    counts: list[tuple[str, int]] = count_tokens(tokens)
+    counts = count_tokens(tokens)
+    total = len(tokens)
 
-    for token, freq in counts:
-        print(token, freq)
-    
-    suffix = build_suffix(args)
+    print(f"The total # of tokens: {total}")
 
-    out_file = f"output/tokens_{suffix}.txt"
-
-    with open(out_file, "w", encoding="utf-8") as f:
-        for token, freq in counts:
-            f.write(f"{token}\t{freq}\n")
-    
-    print(f"Saved token counts to {out_file}")
+    suffix = "_".join(suffix) if suffix else "raw"
+    write_token_counts(counts, total, suffix)
 
     if args.analyze:
-        freqs = [freq for _, freq in counts]
-        ranks = range(1, len(freqs) + 1)
+        analyze_tokens(counts, suffix)
 
-        
-        out_path = f"output/zipf_{suffix}.png"
-
-        plt.figure(figsize=(8, 6))
-        plt.loglog(ranks, freqs)
-        plt.xlabel("Rank")
-        plt.ylabel("Frequency")
-        plt.title(f"Zipf Plot ({suffix})")
-        plt.grid(True, which="both", linestyle="--", linewidth=0.5)
-        plt.tight_layout()
-        plt.savefig(out_path, dpi=300)
-        plt.close()
-
-        print(f"Saved plot to {out_path}")
 
 
 if __name__ == "__main__":
@@ -179,6 +265,3 @@ if __name__ == "__main__":
         nltk.download("wordnet")
 
     main()
-
-
-    

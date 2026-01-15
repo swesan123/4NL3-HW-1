@@ -39,8 +39,7 @@ nltk_data/
 # Output files
 # =========================
 output/
-*.png
-*.pdf
+
 
 # =========================
 # Large datasets / logs
@@ -52,3 +51,12 @@ output/
 # Misc
 # =========================
 .cache/
+
+# =========================
+# latex
+# =========================
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
