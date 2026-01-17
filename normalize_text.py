@@ -111,8 +111,8 @@ def analyze_tokens(counts: List[Tuple[str, int]], suffix: str) -> None:
     """
     Generate and save a Zipf's law visualization of token frequencies.
     
-    Creates a log-log plot showing the relationship between token rank and
-    frequency, which typically follows Zipf's law in natural language.
+    Creates a bar plot with log-log scales showing the relationship between 
+    token rank and frequency, which typically follows Zipf's law in natural language.
     
     Args:
         counts: List of (token, frequency) tuples sorted by frequency (descending)
@@ -134,12 +134,14 @@ def analyze_tokens(counts: List[Tuple[str, int]], suffix: str) -> None:
 
     out_path = f"output/zipf_{suffix}.png"
 
-    plt.figure(figsize=(8, 6))
-    plt.loglog(ranks, freqs)
-    plt.xlabel("Rank")
-    plt.ylabel("Frequency")
-    plt.title(f"Zipf Plot ({suffix})")
-    plt.grid(True, which="both", linestyle="--", linewidth=0.5)
+    plt.figure(figsize=(10, 6))
+    plt.bar(ranks, freqs, width=1.0, edgecolor='none', alpha=0.8)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel("Rank", fontsize=12)
+    plt.ylabel("Frequency", fontsize=12)
+    plt.title(f"Token Frequency Distribution (Zipf's Law) - {suffix}", fontsize=14)
+    plt.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.7)
     plt.tight_layout()
     plt.savefig(out_path, dpi=300)
     plt.close()
