@@ -6,6 +6,7 @@
 - `environment.yml` – Conda environment specification
 - `README.md` – Project documentation
 - `output/` – Generated outputs (token count files and plots; created automatically)
+- `tests/` – Comprehensive test suite with unit and integration tests
 ---
 
 ## Requirements
@@ -46,6 +47,46 @@ Notes:
 - Input and output use UTF-8.
 - The custom option `-myopt` removes digit-only tokens (e.g., years, timestamps, PIDs) to reduce sparsity.
 - `-stem` and `-lemmatize` are mutually exclusive by design.
+
+## Testing (For my personal testing)
+
+A comprehensive test suite is included to ensure correctness and robustness.
+
+### Run Tests
+
+```bash
+# activate environment
+conda activate 4nl3
+
+# install test dependencies (if not already installed)
+pip install pytest pytest-cov
+
+# run all fast tests (recommended)
+pytest tests/ -m "not slow" -v
+
+# run all tests including slow combinations with real data
+pytest tests/ -v
+
+# run specific test files
+pytest tests/test_functions.py -v          # unit tests
+pytest tests/test_all_combinations.py -v   # all 48 flag combinations
+
+# run with coverage report
+pytest tests/ --cov=normalize_text --cov-report=html
+```
+
+### Test Coverage
+
+- **Unit tests** (`test_functions.py`) - Tests for individual functions (tokenization, normalization, file I/O)
+- **Integration tests** (`test_integration.py`) - Command-line execution and flag combinations
+- **Combination tests** (`test_all_combinations.py`) - All 48 valid flag combinations tested to ensure soundness
+
+The test suite validates:
+- All normalization functions work correctly
+- All 48 valid flag combinations execute successfully
+- Mutually exclusive flags (stem/lemmatize) are properly rejected
+- UTF-8 error handling with malformed byte sequences
+- Output files are created correctly
 
 ## Rationale: UTF-8 with errors="replace"
 

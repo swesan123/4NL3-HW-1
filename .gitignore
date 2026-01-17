@@ -39,7 +39,16 @@ nltk_data/
 # Output files
 # =========================
 output/
+output_backup/
 
+# =========================
+# Testing
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
 
 # =========================
 # Large datasets / logs
@@ -51,6 +60,9 @@ output/
 # Misc
 # =========================
 .cache/
+*.swp
+*.swo
+*~
 
 # =========================
 # latex
